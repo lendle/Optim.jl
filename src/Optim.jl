@@ -17,11 +17,17 @@ module Optim
     export curve_fit,
            estimate_errors,
            optimize,
+           interior,
+           linlsq,
            DifferentiableFunction,
-           TwiceDifferentiableFunction
+           TwiceDifferentiableFunction,
+           ConstraintsBox
 
     # Types
     include("types.jl")
+
+    # Types for constrained optimization
+    include("constraints.jl")
 
     # Automatic differentiation utilities
     include("autodiff.jl")
@@ -74,9 +80,13 @@ module Optim
     include("golden_section.jl")
     include("brent.jl")
 
+    # Constrained optimization algorithms
+    include("interior.jl")
+
     # End-User Facing Wrapper Functions
     include("optimize.jl")
     include("curve_fit.jl")
+    
 
     # Examples for testing
     include(joinpath("problems", "unconstrained.jl"))
