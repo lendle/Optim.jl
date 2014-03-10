@@ -280,9 +280,9 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
             c *= rho
             if c > alphamax
                 if display & BRACKET > 0
-                    println("bracket: exceeding alphamax, truncating")
+                    println("bracket: exceeding alphamax, bisecting")
                 end
-                c = alphamax
+                c = (alphamax + cold)/2
             end
             # phic = phi(gphi, c) # TODO: Replace
             phic, dphic, f_up, g_up = linefunc!(df, x, s, c, xtmp, g, true)
@@ -290,13 +290,13 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
             g_calls += g_up
             iterfinite = 1
             while !isfinite(phic) && c > cold && iterfinite < iterfinitemax
+                alphamax = c
                 lsr.nfailures += 1
                 iterfinite += 1
                 if display & BRACKET > 0
                     println("bracket: non-finite value, bisection")
                 end
-                c = (cold + c) / convert(T, 2)
-                # phic = phi(gphi, c) # TODO: Replace
+                c = (cold + c) / 2
                 phic, dphic, f_up, g_up = linefunc!(df, x, s, c, xtmp, g, true)
                 f_calls += f_up
                 g_calls += g_up
