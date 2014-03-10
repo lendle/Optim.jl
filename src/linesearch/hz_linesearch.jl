@@ -365,6 +365,13 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
             if display & LINESEARCH > 0
                 println("Linesearch: secant succeeded")
             end
+            if nextfloat(lsr.value[ia]) >= lsr.value[ib] && nextfloat(lsr.value[iA]) >= lsr.value[iB]
+                # It's so flat, secant didn't do anything useful, time to quit
+                if detailed_trace & LINESEARCH > 0
+                    println("Linesearch: secant suggests it's flat")
+                end
+                return A, f_calls, g_calls
+            end
             ia = iA
             ib = iB
         else
