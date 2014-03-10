@@ -229,6 +229,18 @@ function cg{T}(df::Union(DifferentiableFunction,
         f_x_previous, f_x = f_x, df.fg!(x, gr)
         f_calls, g_calls = f_calls + 1, g_calls + 1
 
+        x_converged,
+        f_converged,
+        gr_converged,
+        converged = assess_convergence(x,
+                                       x_previous,
+                                       f_x,
+                                       f_x_previous,
+                                       gr,
+                                       xtol,
+                                       ftol,
+                                       grtol)
+
         # Check sanity of function and gradient
         if !isfinite(f_x)
             error("Function must finite function values")
@@ -250,18 +262,6 @@ function cg{T}(df::Union(DifferentiableFunction,
         for i in 1:n
             @inbounds s[i] = beta * s[i] - pgr[i]
         end
-
-        x_converged,
-        f_converged,
-        gr_converged,
-        converged = assess_convergence(x,
-                                       x_previous,
-                                       f_x,
-                                       f_x_previous,
-                                       gr,
-                                       xtol,
-                                       ftol,
-                                       grtol)
 
         @cgtrace
     end
