@@ -87,7 +87,9 @@ module Optim
     include("optimize.jl")
     include("curve_fit.jl")
     
+    # Tests
+    const basedir = dirname(Base.source_path())
+    const testpaths = [joinpath(basedir, "problems", "unconstrained.jl"),
+                       joinpath(basedir, "problems", "constrained.jl")]
 
-    # Examples for testing
-    include(joinpath("problems", "unconstrained.jl"))
 end
