@@ -87,7 +87,7 @@ function optimize(d::TwiceDifferentiableFunction,
 end
 
 function optimize(d::DifferentiableFunction,
-                  initial_x::Vector;
+                  initial_x::Array;
                   method::Symbol = :l_bfgs,
                   xtol::Real = 1e-32,
                   ftol::Real = 1e-8,
