@@ -120,10 +120,11 @@ function alphatry{T}(alpha::T,
         lsr.nfailures += 1
         iterfinite += 1
         if iterfinite >= iterfinitemax
-            error("Failed to achieve finite test value")
+            return zero(T), true, f_calls, g_calls
+#             error("Failed to achieve finite test value; alphatest = ", alphatest)
         end
     end
-    a = (phitest - alphatest * dphi0 - phi0) / alphatest^2 # quadratic fit
+    a = ((phitest-phi0)/alphatest - dphi0)/alphatest  # quadratic fit
     if detailed_trace & ALPHAGUESS > 0
         println("quadfit: alphatest = ", alphatest,
                 ", phi0 = ", phi0,
@@ -131,10 +132,10 @@ function alphatry{T}(alpha::T,
                 ", quadcoef = ", a)
     end
     mayterminate = false
-    if a > 0 && phitest <= phi0
+    if isfinite(a) && a > 0 && phitest <= phi0
         alpha = -dphi0 / 2 / a # if convex, choose minimum of quadratic
         if alpha == 0
-            error("alpha is zero. dphi0 = ", dphi0, ", a = ", a)
+            error("alpha is zero. dphi0 = ", dphi0, ", phi0 = ", phi0, ", phitest = ", phitest, ", alphatest = ", alphatest, ", a = ", a)
         end
         if alpha <= alphamax
             mayterminate = true
@@ -180,6 +181,9 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
                            psi3::Real = convert(T,0.1),
                            iterfinitemax::Integer = iceil(-log2(eps(T))),
                            detailed_trace::Integer = 0)
+    if detailed_trace & LINESEARCH > 0
+        println("New linesearch")
+    end
     f_calls = 0
     g_calls = 0
 
@@ -190,7 +194,6 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
     philim = phi0 + epsilon * abs(phi0)
     @assert c > 0
     @assert isfinite(c) && c <= alphamax
-    # phic = phi(gphi, c)
     phic, dphic, f_up, g_up = linefunc!(df, x, s, c, xtmp, g, true, constraints)
     f_calls += f_up
     g_calls += g_up
@@ -200,7 +203,6 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
         lsr.nfailures += 1
         iterfinite += 1
         c *= psi3
-        # phic = phi(gphi, c) # TODO: Fix
         phic, dphic, f_up, g_up = linefunc!(df, x, s, c, xtmp, g, true, constraints)
         f_calls += f_up
         g_calls += g_up
@@ -263,17 +265,20 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
             cold = c
             c *= rho
             if c > alphamax
-                if detailed_trace & BRACKET > 0
-                    println("bracket: exceeding alphamax, bisecting")
-                end
                 c = (alphamax + cold)/2
+                if detailed_trace & BRACKET > 0
+                    println("bracket: exceeding alphamax, bisecting: alphamax = ", alphamax,
+                            ", cold = ", cold, ", new c = ", c)
+                end
+                if c == cold || nextfloat(c) >= alphamax
+                    return cold, f_calls, g_calls
+                end
             end
-            # phic = phi(gphi, c) # TODO: Replace
             phic, dphic, f_up, g_up = linefunc!(df, x, s, c, xtmp, g, true, constraints)
             f_calls += f_up
             g_calls += g_up
             iterfinite = 1
-            while !isfinite(phic) && c > cold && iterfinite < iterfinitemax
+            while !isfinite(phic) && c > nextfloat(cold) && iterfinite < iterfinitemax
                 alphamax = c
                 lsr.nfailures += 1
                 iterfinite += 1
@@ -285,7 +290,9 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
                 f_calls += f_up
                 g_calls += g_up
             end
-            if (dphic < 0 && c == alphamax) || !isfinite(phic)
+            if !isfinite(phic)
+                return cold, f_calls, g_calls
+            elseif dphic < 0 && c == alphamax
                 # We're on the edge of the allowed region, and the
                 # value is still decreasing. This can be due to
                 # roundoff error in barrier penalties, a barrier
@@ -299,23 +306,7 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
                             ", phic = ", phic,
                             ", dphic = ", dphic)
                 end
-                ic = length(lsr)
-                while !isfinite(phic)
-                    ic -= 1
-                    c = lsr.alpha[ic]
-                    phic = lsr.value[ic]
-                    if isfinite(phic)
-                        println("Using c = ", c, ", phic = ", phic)
-                    end
-                    # Re-evaluate at current position. This is important if
-                    # reportfunc makes use of cached storage, and that cache
-                    # has been corrupted by NaN/Inf
-                    # phic = phi(gphi, c) # TODO: Replace
-                    phic, dphic, f_up, g_up = linefunc!(df, x, s, c, xtmp, g, true, constraints)
-                    f_calls += f_up
-                    g_calls += g_up
-                end
-                return c, f_calls, g_calls # phic
+                return c, f_calls, g_calls
             end
             push!(lsr, c, phic, dphic)
         end
@@ -332,7 +323,6 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
                     ", b = ", b,
                     ", phi(a) = ", lsr.value[ia],
                     ", phi(b) = ", lsr.value[ib])
-            println("phi(a) == phi(b) ? ", lsr.value[ia] == lsr.value[ib])
         end
         if b - a <= eps(b)
             return a, f_calls, g_calls # lsr.value[ia]
@@ -378,6 +368,11 @@ function hz_linesearch!{T}(df::Union(DifferentiableFunction,
         end
         iter += 1
     end
+    @show ia, ib
+    @show lsr.alpha[ia], lsr.alpha[ib]
+    @show lsr.value[ia], lsr.value[ib]
+    @show lsr.slope[ia], lsr.slope[ib]
+    @show alphamax, iter
     error("Linesearch failed to converge")
 end
 
@@ -428,8 +423,8 @@ function secant2!{T}(df::Union(DifferentiableFunction,
     b = lsr.alpha[ib]
     dphia = lsr.slope[ia]
     dphib = lsr.slope[ib]
-    @assert dphia < 0
-    @assert dphib >= 0
+    @assert dphia < 0 && isfinite(dphia)
+    @assert dphib >= 0 && isfinite(dphib)
     c = secant(a, b, dphia, dphib)
     if detailed_trace & SECANT2 > 0
         println("secant2: a = ", a, ", b = ", b, ", c = ", c)
@@ -439,7 +434,6 @@ function secant2!{T}(df::Union(DifferentiableFunction,
     phic, dphic, f_up, g_up = linefunc!(df, x, s, c, xtmp, g, true, constraints)
     f_calls += f_up
     g_calls += g_up
-    @assert isfinite(phic)
     push!(lsr, c, phic, dphic)
     ic = length(lsr)
     if satisfies_wolfe(c, phic, dphic, phi0, dphi0, philim, delta, sigma)
@@ -569,7 +563,12 @@ function bisect!{T}(df::Union(DifferentiableFunction,
     # Debugging (HZ, conditions shown following U3)
     @assert lsr.slope[ia] < 0
     @assert lsr.value[ia] <= philim
-    @assert lsr.slope[ib] < 0       # otherwise we wouldn't be here
+    # if !(lsr.slope[ib] < 0)
+    #     @show a, b
+    #     @show lsr.value[ia], lsr.value[ib]
+    #     @show lsr.slope[ia], lsr.slope[ib]
+    # end
+    # @assert lsr.slope[ib] < 0       # otherwise we wouldn't be here
     @assert lsr.value[ib] > philim
     @assert b > a
     while b - a > eps(b)
@@ -580,7 +579,6 @@ function bisect!{T}(df::Union(DifferentiableFunction,
         phid, gphi, f_up, g_up = linefunc!(df, x, s, d, xtmp, g, true, constraints)
         f_calls += f_up
         g_calls += g_up
-        @assert isfinite(phid)
         push!(lsr, d, phid, gphi)
         id = length(lsr)
         if gphi >= 0
