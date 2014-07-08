@@ -10,6 +10,9 @@ function optimize(d::TwiceDifferentiableFunction,
                   extended_trace::Bool = false,
                   linesearch!::Function = hz_linesearch!,
                   bfgs_initial_invH = nothing)
+    if length(initial_x) == 1
+        error("Use optimize(f, scalar, scalar) for 1D problems")
+    end
     if extended_trace
         store_trace = true
     end
@@ -103,6 +106,9 @@ function optimize(d::DifferentiableFunction,
                   extended_trace::Bool = false,
                   linesearch!::Function = hz_linesearch!,
                   bfgs_initial_invH = nothing)
+    if length(initial_x) == 1
+        error("Use optimize(f, scalar, scalar) for 1D problems")
+    end
     if extended_trace
         show_trace = true
     end
@@ -187,6 +193,9 @@ function optimize(f::Function,
                   extended_trace::Bool = false,
                   linesearch!::Function = hz_linesearch!,
                   bfgs_initial_invH = nothing)
+    if length(initial_x) == 1
+        error("Use optimize(f, scalar, scalar) for 1D problems")
+    end
     if extended_trace
         show_trace = true
     end
@@ -302,6 +311,9 @@ function optimize(f::Function,
                   extended_trace::Bool = false,
                   linesearch!::Function = hz_linesearch!,
                   bfgs_initial_invH = nothing)
+    if length(initial_x) == 1
+        error("Use optimize(f, scalar, scalar) for 1D problems")
+    end
     if extended_trace
         show_trace = true
     end
@@ -405,6 +417,9 @@ function optimize(f::Function,
                   linesearch!::Function = hz_linesearch!,
                   autodiff::Bool = false,
                   bfgs_initial_invH = nothing)
+    if length(initial_x) == 1
+        error("Use optimize(f, scalar, scalar) for 1D problems")
+    end
     if extended_trace
         show_trace = true
     end
